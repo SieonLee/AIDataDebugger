@@ -1,73 +1,61 @@
 # AI Data Debugger
 
-I built AI Data Debugger around a problem I kept running into: most profiling tools are good at telling you that a column has missing values, duplicates, or weird distributions, but they stop right before the useful part.
+AI Data Debugger is a Streamlit-based application for evaluating the reliability of ML and analytics datasets. It combines deterministic data quality checks, baseline-vs-new dataset drift comparison, cleaning impact simulation, data contract export, and optional AI-assisted explanations.
 
-The real question is usually:
+The project is designed to move beyond static CSV profiling. Instead of only showing summary statistics, it helps answer operational questions that matter in ML workflows:
 
-> Is this going to break my model, skew my metrics, or quietly fail when the next batch arrives?
+- Has the new batch changed compared with the historical baseline?
+- Which data quality issues are most likely to affect model training or reporting?
+- What should be reviewed or fixed first?
+- Would a conservative cleaning pass improve the dataset health score?
+- Can the current dataset profile be turned into a reusable validation contract?
 
-So this project treats a dataset less like a static CSV and more like something that changes over time. It checks the data deterministically, explains why the issues matter for ML or analytics work, lets you preview cleanup impact, and keeps local run history so the same dataset can be monitored across batches.
+## Overview
 
-## What It Is
+AI Data Debugger supports a repeatable dataset reliability workflow:
 
-AI Data Debugger is a Streamlit app for debugging ML and analytics datasets. The first version started as a CSV profiler, but it has grown into a small data reliability workflow:
+1. Upload a baseline CSV dataset.
+2. Configure dataset roles such as target, timestamp, and entity ID.
+3. Run deterministic quality checks and calculate a health score.
+4. Upload a newer dataset batch for drift comparison.
+5. Review issue drilldowns, recommendations, and visual diagnostics.
+6. Simulate conservative cleaning and compare before/after results.
+7. Export a cleaned dataset preview.
+8. Export a YAML or JSON data contract.
+9. Track run history locally across repeated scans.
 
-- upload a baseline dataset
-- define the dataset roles, like target, timestamp, and entity ID
-- scan for common quality issues
-- compare a newer batch against the baseline
-- review drift and reliability risks
-- simulate conservative cleaning
-- export a cleaned dataset preview
-- export a YAML or JSON data contract
-- track run history over time
+LLM providers are optional. Detection, scoring, drift metrics, and cleaning simulation remain deterministic. AI providers are only used for explanation, remediation planning, Q&A, report generation, and code suggestions.
 
-The app uses AI only after the deterministic checks are done. LLMs can help explain issues, draft remediation plans, answer questions, or write preview code, but they do not decide whether an issue exists.
+## Key Capabilities
 
-## Why I Made It
-
-Tools like pandas-profiling and Great Expectations are useful, but they are usually either descriptive or validation-oriented. I wanted something closer to the workflow I would want as an ML engineer:
-
-- What changed since the last healthy batch?
-- Which issues are most likely to hurt model training or reporting?
-- What should I fix first?
-- If I apply a safe cleanup, does the score actually improve?
-- Can I turn what I learned into a contract for the next run?
-
-That is the shape of this project. It is not trying to replace a full data observability platform. It is a focused prototype for the first few minutes of dataset debugging, when you need signal quickly and want the reasoning to be understandable.
-
-## Current Features
-
-The app can:
-
-- profile a CSV dataset and show shape, dtypes, missingness, unique counts, and sample rows
-- detect missing values, duplicates, constant columns, high-cardinality categoricals, numeric outliers, type mismatches, target imbalance, timestamp risks, and ID-like fields
-- assign issue severity as `critical`, `warning`, or `minor`
-- calculate a health score from 0 to 100
-- compare a baseline dataset with a newer batch
-- detect schema drift, missing-value drift, numeric PSI drift, categorical drift, and cardinality drift
-- show issue drilldowns with ML impact, business impact, suggested fixes, and example pandas code
-- run a conservative cleaning simulation and compare before/after score, rows, columns, and issue count
-- export cleaned dataset previews as CSV, optional Parquet, or a ZIP package with cleaning metadata
-- save local run history in SQLite without storing raw uploaded data
-- show health score and issue trends for repeated runs under the same monitor name
-- export a validation contract as YAML or JSON
-- use rule-based explanations, local Ollama, or OpenAI API as the explanation layer
+- CSV profiling with shape, dtypes, missingness, unique counts, and sample rows
+- Missing value, duplicate row, constant column, outlier, dtype, target imbalance, timestamp, and ID-like feature checks
+- Health score from 0 to 100 with severity-based deductions
+- Baseline-vs-new dataset drift comparison
+- Schema drift, missing-value drift, numeric PSI drift, categorical drift, and cardinality drift detection
+- ML-aware dataset role setup for target, timestamp, entity ID, protected columns, and ML-excluded columns
+- Issue-level investigation cards with ML impact, business impact, recommended fixes, and example pandas code
+- Cleaning simulation with before/after rows, columns, health score, and issue count
+- Cleaned dataset preview export as CSV, optional Parquet, or ZIP with metadata
+- Local SQLite run history without storing raw uploaded data
+- Health score and issue trend charts for repeated runs
+- YAML and JSON data contract export
+- Optional rule-based, local Ollama, or OpenAI explanation layer
 
 ## Demo
 
-There is a ready-to-run demo in [DEMO.md](DEMO.md).
+A guided demo is available in [DEMO.md](DEMO.md).
 
-Use these files:
+Sample files:
 
 - `sample_data/baseline_market_events.csv`
 - `sample_data/broken_market_events.csv`
 
-The story is simple: the baseline file is a healthy historical market-events dataset, and the broken file is a newer production batch with degraded quality. The demo walks through role setup, drift comparison, cleaning simulation, contract export, and run history.
+The demo scenario compares a healthy historical market-events dataset against a degraded production batch. It highlights missing-value drift, numeric distribution drift, categorical drift, unseen categories, duplicate rows, outliers, and target imbalance.
 
-## Run Locally
+## Installation
 
-Create a virtual environment:
+Create and activate a virtual environment:
 
 ```bash
 python -m venv .venv
@@ -80,49 +68,41 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Start the app:
+Run the app:
 
 ```bash
 streamlit run app.py
 ```
 
-Then open the local Streamlit URL from the terminal.
+## AI Provider Options
 
-## AI Providers
+The application works without any external AI provider. In the default mode, explanations are generated from deterministic rule-based templates.
 
-The app works without any LLM provider. In that mode, all explanations are generated from deterministic rules.
-
-If you want AI-assisted explanations, the sidebar supports:
+Supported modes:
 
 1. **Rule-based only**  
-   No LLM calls. This is the safest mode and the one I usually use first in a demo.
+   No LLM calls. All explanations, summaries, and recommendations are generated locally from deterministic issue metadata.
 
 2. **Local Ollama**  
-   Uses `http://localhost:11434/api/chat`. This is useful if you want local explanations without sending metadata to an external API.
+   Uses a local Ollama server at `http://localhost:11434/api/chat`.
+
+   ```bash
+   ollama serve
+   ollama pull llama3.1
+   ```
 
 3. **OpenAI API**  
-   Uses the official OpenAI Python SDK if it is installed. The app reads the key from the sidebar input first, then from `OPENAI_API_KEY`.
+   Uses the official OpenAI Python SDK when available. The API key can be entered in the sidebar for the current session or read from `OPENAI_API_KEY`.
 
-For OpenAI:
+   ```bash
+   export OPENAI_API_KEY="your_api_key_here"
+   ```
 
-```bash
-export OPENAI_API_KEY="your_api_key_here"
-```
+External AI providers do not receive raw uploaded rows. Prompts are built from compact metadata only, such as issue objects, column dtypes, missing rates, unique ratios, summary statistics, health scores, and drift summaries.
 
-For Ollama:
+## Reliability Workflow
 
-```bash
-ollama serve
-ollama pull llama3.1
-```
-
-The privacy boundary is intentional: raw uploaded rows are not sent to LLM providers. The model only receives compact metadata such as issue objects, column dtypes, missing rates, unique ratios, summary stats, health score, and drift summaries.
-
-## Repeatable Workflow
-
-The part I care most about is that this is not just a one-time report.
-
-Before analysis, you can set dataset roles:
+Before running analysis, users can optionally define dataset roles:
 
 - target column
 - timestamp column
@@ -130,9 +110,9 @@ Before analysis, you can set dataset roles:
 - protected columns
 - columns to exclude from ML checks
 
-Those roles reduce false positives. For example, `date` should be treated as a timestamp, and `ticker` in a market dataset should be treated as an entity key rather than a suspicious categorical feature.
+These roles reduce false positives and make the checks more relevant to ML workflows. For example, a `date` column can be treated as a timestamp, and `ticker` can be treated as an entity key instead of a generic high-cardinality categorical feature.
 
-Each run is saved locally to SQLite with:
+Each analysis run is stored locally in SQLite with:
 
 - run ID
 - monitor name
@@ -141,16 +121,23 @@ Each run is saved locally to SQLite with:
 - health score
 - issue counts by severity
 - AI provider used
-- role/config summary
+- role and configuration summary
 - issue summaries as JSON
 
-Raw uploaded data is not stored.
+Raw uploaded datasets are not persisted in run history.
 
-## Data Contracts
+## Data Contract Export
 
-After a scan, the app can export a validation contract as YAML or JSON. The contract includes required columns, expected dtypes, missing-rate limits, low-cardinality accepted values, numeric min/max ranges, and uniqueness constraints for entity IDs.
+The app can generate a validation contract from the current dataset profile. Contracts can be exported as YAML or JSON and include:
 
-The generated contract is meant as a starting point. In a real workflow, a team would review and tighten it before wiring it into CI, orchestration, or a data quality monitor.
+- required columns
+- expected dtypes
+- max missing-rate rules
+- allowed values for low-cardinality categorical columns
+- numeric min/max ranges
+- uniqueness constraints for configured entity IDs
+
+The generated contract is intended as a starting point for review before integration with CI, orchestration, or production data quality checks.
 
 ## Project Structure
 
@@ -177,28 +164,27 @@ requirements.txt
 README.md
 ```
 
-## Design Choices
+## Design Principles
 
-A few decisions are deliberate:
-
-- Detection is deterministic.
-- LLMs explain and plan; they do not detect issues.
-- Cleaning code generated by AI is preview-only.
-- Run history stores metadata, not raw datasets.
-- Drift compares baseline vs new directly instead of profiling the new batch in isolation.
-- The app stays Streamlit-based so the prototype is easy to run and inspect.
+- Keep detection deterministic and reproducible.
+- Use LLMs only after rule-based issues and metrics already exist.
+- Do not send raw uploaded rows to external AI providers.
+- Treat cleaning code as preview-only unless explicitly applied by the user.
+- Store run metadata and issue summaries, not raw datasets.
+- Compare baseline and new datasets directly for drift analysis.
+- Keep the application easy to run locally with Streamlit.
 
 ## Future Work
 
-The next things I would add are:
+Planned improvements include:
 
-- saved monitor configs
+- saved monitor configurations
 - user-editable thresholds
-- target-aware leakage checks using prediction time
-- real S3/Postgres/BigQuery connectors
-- Great Expectations export
+- prediction-time-aware leakage checks
+- production connectors for S3, Postgres, and BigQuery
+- Great Expectations suite export
 - scheduled runs and alerts
 - richer contract editing
 - train/test split diagnostics
 
-The long-term direction is a lightweight ML data reliability cockpit: not a giant platform, but a practical place to catch data problems before they become model problems.
+The long-term direction is a lightweight ML data reliability tool for catching data issues before they become model or reporting failures.
