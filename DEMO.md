@@ -1,6 +1,6 @@
 # AI Data Debugger Demo
 
-This is the demo flow I use to show the project as a repeatable ML data reliability workflow instead of a one-off CSV profiling tool.
+This demo shows AI Data Debugger as a repeatable ML data reliability workflow instead of a one-off CSV profiling tool.
 
 ## Files
 
@@ -37,7 +37,7 @@ That is the story: the training data looked fine, but the new batch no longer be
 
 2. Keep the AI provider on **Rule-based only** at first.
 
-   I usually say this out loud: the checks, scores, drift metrics, and cleaning simulation are deterministic. AI can explain the results later, but it does not decide what is wrong.
+   The checks, scores, drift metrics, and cleaning simulation are deterministic. AI can explain the results later, but it does not decide what is wrong.
 
 3. Upload `sample_data/baseline_market_events.csv` as the baseline dataset.
 
@@ -51,7 +51,7 @@ That is the story: the training data looked fine, but the new batch no longer be
    - timestamp column: `date`
    - entity ID column: `ticker`
 
-   This is a good moment to explain that the tool is not treating every column blindly. A timestamp, target, and entity key should behave differently from ordinary model features.
+   This shows that the tool is not treating every column blindly. A timestamp, target, and entity key should behave differently from ordinary model features.
 
 6. Review the first health score.
 
@@ -65,7 +65,7 @@ That is the story: the training data looked fine, but the new batch no longer be
 
 9. Open **Recommendations**.
 
-   These are ordered by severity, estimated impact, and ML risk. I frame this as the handoff from detection to action.
+   These are ordered by severity, estimated impact, and ML risk. This is the handoff from detection to action.
 
 10. Open **Cleaning simulation**.
 
@@ -73,7 +73,7 @@ That is the story: the training data looked fine, but the new batch no longer be
 
 11. Export the cleaned dataset preview.
 
-    The app can download CSV, optional Parquet, or a ZIP package with cleaning metadata. I call it a preview on purpose because generated cleaning should be reviewed before becoming a production transform.
+    The app can download CSV, optional Parquet, or a ZIP package with cleaning metadata. The output is labeled as a preview because generated cleaning should be reviewed before becoming a production transform.
 
 12. Open **Report** and export the data contract.
 
@@ -87,23 +87,9 @@ That is the story: the training data looked fine, but the new batch no longer be
 
     If Ollama or OpenAI is configured, use it to generate an explanation or remediation plan. The important caveat is that raw rows are still not sent to the provider.
 
-## Short Interview Script
-
-Here is the short version I would say in an interview:
-
-> I built this because a lot of profiling tools stop at “this column has missing values.” That is useful, but for ML work I usually need to know whether the issue affects training, evaluation, or production reliability.
->
-> In this demo I start with a healthy baseline market-events dataset. I mark `date` as the timestamp, `ticker` as the entity ID, and `next_day_up` as the target. That gives the checks some ML context and reduces false positives.
->
-> Then I upload a newer production batch. The Data Drift tab compares the two datasets directly. It picks up missing-value drift, numeric PSI drift, categorical shifts, new event types, duplicate rows, outliers, and target imbalance.
->
-> The key design choice is that detection stays deterministic. LLMs are only used for explanations, remediation plans, code previews, and report writing. They do not decide whether an issue exists, and raw rows are not sent to external APIs.
->
-> After that I run a cleaning simulation, export a cleaned dataset preview, generate a YAML or JSON data contract, and show the History tab. That is the shift from a one-time EDA tool to a repeatable data reliability workflow.
-
 ## Things To Emphasize
 
-When presenting it, I would avoid saying “CSV profiler” too much. The stronger framing is:
+When presenting the project, avoid framing it as only a CSV profiler. The stronger framing is:
 
 - baseline vs production batch
 - deterministic data quality gates
