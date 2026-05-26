@@ -306,27 +306,31 @@ def _render_cleaned_export(
         st.caption("Parquet export is available when `pyarrow` is installed.")
 
 
-def _render_role_setup(df: pd.DataFrame) -> dict:
+def _render_dataset_settings(df: pd.DataFrame, default_monitor_name: str) -> tuple[str, dict]:
     columns = [""] + list(map(str, df.columns))
-    with st.expander("Dataset role setup", expanded=True):
-        st.caption("Optional roles reduce ML false positives and prepare this scan for repeatable reliability workflows.")
-        role_col_1, role_col_2, role_col_3 = st.columns(3)
-        with role_col_1:
-            target_column = st.selectbox("Target column", columns, index=0)
-        with role_col_2:
-            timestamp_column = st.selectbox("Timestamp column", columns, index=0)
-        with role_col_3:
-            entity_id_column = st.selectbox("Entity ID column", columns, index=0)
+    with st.sidebar.expander("Dataset settings", expanded=False):
+        monitor_name = st.text_input(
+            "Dataset / monitor name",
+            value=default_monitor_name,
+            help="Runs with the same monitor name and schema are grouped in History trends.",
+        ).strip() or default_monitor_name
+        st.caption("Optional roles reduce ML false positives and make drift checks more ML-aware.")
+        target_column = st.selectbox("Target column", columns, index=0)
+        timestamp_column = st.selectbox("Timestamp column", columns, index=0)
+        entity_id_column = st.selectbox("Entity ID column", columns, index=0)
         protected_columns = st.multiselect("Protected columns to ignore", list(map(str, df.columns)))
         exclude_ml_columns = st.multiselect("Columns to exclude from ML checks", list(map(str, df.columns)))
-    return normalize_roles(
-        {
-            "target_column": target_column,
-            "timestamp_column": timestamp_column,
-            "entity_id_column": entity_id_column,
-            "protected_columns": protected_columns,
-            "exclude_ml_columns": exclude_ml_columns,
-        }
+    return (
+        monitor_name,
+        normalize_roles(
+            {
+                "target_column": target_column,
+                "timestamp_column": timestamp_column,
+                "entity_id_column": entity_id_column,
+                "protected_columns": protected_columns,
+                "exclude_ml_columns": exclude_ml_columns,
+            }
+        ),
     )
 
 
@@ -517,16 +521,10 @@ def main() -> None:
     if original_df.empty:
         st.warning("The CSV loaded successfully, but it has no data rows. The debugger can still report the empty dataset issue.")
 
-    monitor_name = st.text_input(
-        "Dataset / monitor name",
-        value=_default_monitor_name(uploaded_file.name),
-        help="Runs with the same monitor name and schema are grouped in History trends.",
-    ).strip() or _default_monitor_name(uploaded_file.name)
-
     if "working_df" not in st.session_state:
         st.session_state["working_df"] = original_df.copy()
     df = st.session_state["working_df"]
-    roles = _render_role_setup(df)
+    monitor_name, roles = _render_dataset_settings(df, _default_monitor_name(uploaded_file.name))
     original_score = _score_uploaded_df(original_df, roles=roles)
     schema_fingerprint = schema_fingerprint_for_frame(df)
 
