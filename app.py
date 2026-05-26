@@ -486,9 +486,13 @@ def main() -> None:
                 st.sidebar.warning("OpenAI API: SDK unavailable, using rule-based fallback")
     upload_col, compare_col = st.columns([1, 1])
     with upload_col:
-        uploaded_file = st.file_uploader("Upload baseline CSV", type=["csv"])
+        uploaded_file = st.file_uploader("1. Upload baseline / original CSV", type=["csv"])
     with compare_col:
-        comparison_file = st.file_uploader("Optional new CSV for drift comparison", type=["csv"], key="comparison_csv")
+        comparison_file = st.file_uploader(
+            "2. Upload new / changed CSV for comparison",
+            type=["csv"],
+            key="comparison_csv",
+        )
     if uploaded_file is None:
         st.info("Upload a CSV file to start profiling.")
         return
@@ -647,6 +651,19 @@ def main() -> None:
     obs_col_4.metric("Cleanliness trend", obs_metrics["cleanliness_trend"])
     obs_col_4.caption(obs_metrics["cleanliness_trend_detail"])
 
+    if comparison_error:
+        st.error(f"Could not load comparison dataset: {comparison_error}")
+    elif comparison_df is not None and drift_summary_for_ai is not None:
+        st.success(f"Comparison active: `{uploaded_file.name}` vs `{comparison_file.name}`")
+        cmp_col_1, cmp_col_2, cmp_col_3, cmp_col_4 = st.columns(4)
+        cmp_col_1.metric("Baseline health", f"{health_score}/100")
+        cmp_col_2.metric("New batch health", f"{comparison_score}/100", comparison_score - health_score)
+        cmp_col_3.metric("Drift risk score", f"{drift_summary_for_ai['drift_score']}/100", drift_summary_for_ai["risk_label"], delta_color="off")
+        cmp_col_4.metric("Drift issues", len(drift_summary_for_ai["issues"]))
+        st.caption("Open the Data Drift tab for missing-value drift, distribution drift, categorical changes, and schema changes.")
+    else:
+        st.info("Upload a second CSV in the comparison box to compare the baseline against a new or changed dataset.")
+
     if st.session_state.get("applied_fixes"):
         delta = health_score - original_score
         st.success(f"Working dataset score moved from {original_score} to {health_score} ({delta:+d}).")
@@ -686,6 +703,14 @@ def main() -> None:
         st.subheader("Dataset Snapshot")
         st.write(f"Shape: **{overview['shape'][0]} rows x {overview['shape'][1]} columns**")
         st.dataframe(dtype_summary(df), use_container_width=True)
+
+        if comparison_df is not None and drift_summary_for_ai is not None:
+            st.subheader("Baseline vs New Dataset")
+            st.write(f"Comparing **{uploaded_file.name}** against **{comparison_file.name}**.")
+            compare_shape_col_1, compare_shape_col_2, compare_shape_col_3 = st.columns(3)
+            compare_shape_col_1.metric("Baseline shape", f"{original_df.shape[0]} x {original_df.shape[1]}")
+            compare_shape_col_2.metric("New shape", f"{comparison_df.shape[0]} x {comparison_df.shape[1]}")
+            compare_shape_col_3.metric("Drift risk", drift_summary_for_ai["risk_label"])
 
         st.subheader("Top Risks")
         risks = top_risks(issues, limit=5)
